@@ -1,6 +1,7 @@
 import cv2
 import os
 import time
+import datetime
 import numpy as np
 import onnxruntime as ort
 import psutil
@@ -21,11 +22,33 @@ model_path = 'yolov8n.onnx'
 session = ort.InferenceSession(model_path)
 input_name = session.get_inputs()[0].name
 
-CLASSES = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 
-           'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog']
+# 完整的 COCO 80 类别字典（严格对应 YOLOv8 预训练模型的输出索引）
+CLASSES = [
+    'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 
+    'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 
+    'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 
+    'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball', 'kite', 
+    'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket', 'bottle', 
+    'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 
+    'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 
+    'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 
+    'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 
+    'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush'
+]
 
 # 实时识别开关标记
 realtime_enabled = False
+app_start_time = time.time()
+
+def get_cpu_temperature():
+    """读取树莓派 CPU 温度，失败时返回 None"""
+    temp_file = '/sys/class/thermal/thermal_zone0/temp'
+    try:
+        with open(temp_file, 'r', encoding='utf-8') as f:
+            raw = f.read().strip()
+        return round(int(raw) / 1000.0, 1)
+    except (OSError, ValueError):
+        return None
 
 def process_frame_with_yolo(img):
     """封装核心视觉识别与绘框逻辑"""
@@ -104,6 +127,26 @@ def index():
 @app.route('/video_feed')
 def video_feed():
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/system_status')
+@app.route('/system_status/')
+@app.route('/status')
+@app.route('/api/system_status')
+def system_status():
+    uptime_sec = int(time.time() - app_start_time)
+    uptime_str = str(datetime.timedelta(seconds=uptime_sec))
+    cpu_temp = get_cpu_temperature()
+    return jsonify({
+        "status": "success",
+        "cpu_usage": round(psutil.cpu_percent(interval=None), 1),
+        "memory_usage": round(psutil.virtual_memory().percent, 1),
+        "disk_usage": round(psutil.disk_usage('/').percent, 1),
+        "cpu_temp": cpu_temp,
+        "uptime_seconds": uptime_sec,
+        "uptime": uptime_str,
+        "realtime_enabled": realtime_enabled,
+        "timestamp": int(time.time())
+    })
 
 @app.route('/toggle_realtime', methods=['POST'])
 def toggle_realtime():
