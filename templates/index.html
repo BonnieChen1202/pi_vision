@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>树莓派图像识别平台</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding: 20px; }
+        .container { display: flex; justify-content: space-around; flex-wrap: wrap; max-width: 1200px; margin: 0 auto; }
+        .panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin: 10px; width: 45%; }
+        img { max-width: 100%; height: auto; border-radius: 4px; border: 1px solid #ddd; }
+        button { padding: 10px 20px; font-size: 16px; margin: 15px 5px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px; transition: 0.3s; }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+    <h1>树莓派实时监测与目标检测</h1>
+    
+    <div class="container">
+        <div class="panel">
+            <h3>实时监控</h3>
+            <img src="/video_feed" alt="实时视频流">
+            <br>
+            <button id="captureBtn" onclick="takePhoto()">📷 拍照记录</button>
+        </div>
+
+        <div class="panel">
+            <h3>处理与结果</h3>
+            <div id="previewArea">
+                <p style="color: #666;">暂无照片，请先拍照。</p>
+            </div>
+            <button id="recognizeBtn" onclick="runRecognition()" disabled>🔍 开始识别</button>
+        </div>
+    </div>
+
+    <script>
+        let currentFilename = "";
+
+        // 拍照并显示预览
+        function takePhoto() {
+            fetch('/capture', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        currentFilename = data.filename;
+                        const previewArea = document.getElementById('previewArea');
+                        previewArea.innerHTML = `<h4>抓拍预览：</h4><img src="${data.image_url}?t=${new Date().getTime()}" alt="抓拍图片">`;
+                        document.getElementById('recognizeBtn').disabled = false;
+                    } else {
+                        alert("拍照失败：" + data.message);
+                    }
+                })
+                .catch(err => console.error('Error:', err));
+        }
+
+        // 调用识别接口
+        function runRecognition() {
+            if (!currentFilename) return;
+            
+            const btn = document.getElementById('recognizeBtn');
+            btn.innerText = "⏳ 识别中...";
+            btn.disabled = true;
+
+            fetch('/recognize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename: currentFilename })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const previewArea = document.getElementById('previewArea');
+                    previewArea.innerHTML = `<h4>识别结果：</h4><img src="${data.result_url}?t=${new Date().getTime()}" alt="识别结果">`;
+                } else {
+                    alert("识别失败：" + data.message);
+                }
+            })
+            .catch(err => console.error('Error:', err))
+            .finally(() => {
+                btn.innerText = "🔍 开始识别";
+                btn.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+# =========================
+# 1. 业务产生的测试数据与图片
+# =========================
+# 忽略 images 和 results 文件夹下的所有内容
+static/images/*
+static/results/*
+# 但保留这两个文件夹的空目录结构（配合 .gitkeep 使用）
+!static/images/.gitkeep
+!static/results/.gitkeep
+
+# =========================
+# 2. Python 与虚拟环境
+# =========================
+env/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================
+# 3. 操作系统与 IDE 缓存
+# =========================
+# 过滤 Mac 开发环境下产生的系统隐藏文件
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# 过滤 VS Code 的本地配置
+.vscode/
