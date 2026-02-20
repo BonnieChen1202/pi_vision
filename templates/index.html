@@ -11,6 +11,9 @@
         button { padding: 10px 20px; font-size: 16px; margin: 15px 5px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px; transition: 0.3s; }
         button:hover { background-color: #0056b3; }
         button:disabled { background-color: #ccc; cursor: not-allowed; }
+        /* 实时识别按钮关闭状态的颜色 */
+        .btn-danger { background-color: #dc3545; }
+        .btn-danger:hover { background-color: #c82333; }
     </style>
 </head>
 <body>
@@ -20,8 +23,9 @@
     <div class="container">
         <div class="panel">
             <h3>实时监控</h3>
-            <img src="/video_feed" alt="实时视频流">
+            <img id="videoStream" src="/video_feed" alt="实时视频流">
             <br>
+            <button id="realtimeBtn" onclick="toggleRealtime()">👁️ 开启实时识别</button>
             <button id="captureBtn" onclick="takePhoto()">📷 拍照记录</button>
         </div>
 
@@ -30,12 +34,45 @@
             <div id="previewArea">
                 <p style="color: #666;">暂无照片，请先拍照。</p>
             </div>
-            <button id="recognizeBtn" onclick="runRecognition()" disabled>🔍 开始识别</button>
+            <button id="recognizeBtn" onclick="runRecognition()" disabled>🔍 开始单张识别</button>
         </div>
     </div>
 
     <script>
         let currentFilename = "";
+        let isRealtime = false;
+
+        // 切换实时识别状态
+        function toggleRealtime() {
+            isRealtime = !isRealtime;
+            const btn = document.getElementById('realtimeBtn');
+            
+            // 按钮状态过渡反馈
+            btn.innerText = "切换中...";
+            btn.disabled = true;
+
+            fetch('/toggle_realtime', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: isRealtime })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    if (data.realtime_enabled) {
+                        btn.innerText = "🛑 关闭实时识别";
+                        btn.classList.add("btn-danger");
+                    } else {
+                        btn.innerText = "👁️ 开启实时识别";
+                        btn.classList.remove("btn-danger");
+                    }
+                }
+            })
+            .catch(err => console.error('Error:', err))
+            .finally(() => {
+                btn.disabled = false;
+            });
+        }
 
         // 拍照并显示预览
         function takePhoto() {
@@ -54,7 +91,7 @@
                 .catch(err => console.error('Error:', err));
         }
 
-        // 调用识别接口
+        // 调用单张识别接口
         function runRecognition() {
             if (!currentFilename) return;
             
@@ -78,7 +115,7 @@
             })
             .catch(err => console.error('Error:', err))
             .finally(() => {
-                btn.innerText = "🔍 开始识别";
+                btn.innerText = "🔍 开始单张识别";
                 btn.disabled = false;
             });
         }
